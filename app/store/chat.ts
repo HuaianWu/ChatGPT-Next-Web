@@ -348,6 +348,8 @@ export const useChatStore = createPersistStore(
         var api: ClientApi;
         if (modelConfig.model.startsWith("gemini")) {
           api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -355,7 +357,7 @@ export const useChatStore = createPersistStore(
         // make request
         api.llm.chat({
           messages: sendMessages,
-          config: { ...modelConfig, stream: true },
+          config: { ...modelConfig, stream: !modelConfig.model.startsWith("video") },
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {
@@ -533,6 +535,8 @@ export const useChatStore = createPersistStore(
         var api: ClientApi;
         if (modelConfig.model.startsWith("gemini")) {
           api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }

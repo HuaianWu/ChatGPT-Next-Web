@@ -85,6 +85,14 @@ if (mode !== "export") {
         source: "/sharegpt",
         destination: "https://sharegpt.com/api/conversations",
       },
+      {
+        source: "/api/text2video",
+        destination: "http://59.49.28.154:6785/api/text2video",
+      },
+      {
+        source: "/api/video/:path*",
+        destination: "http://59.49.28.154:6785/api/video/:path*",
+      },
     ];
 
     return {

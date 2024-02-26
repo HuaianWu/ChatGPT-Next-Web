@@ -36,6 +36,7 @@ const DEFAULT_ACCESS_STATE = {
   googleApiKey: "",
   googleApiVersion: "v1",
 
+  videoUrl: "",
   // server config
   needCode: true,
   hideUserApiKey: false,

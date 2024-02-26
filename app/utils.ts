@@ -290,6 +290,20 @@ export function getMessageImages(message: RequestMessage): string[] {
   return urls;
 }
 
+
+export function getMessageVideos(message: RequestMessage): string[] {
+  if (typeof message.content === "string") {
+    return [];
+  }
+  const urls: string[] = [];
+  for (const c of message.content) {
+    if (c.type === "video_url") {
+      urls.push(c.video_url?.url ?? "");
+    }
+  }
+  return urls;
+}
+
 export function isVisionModel(model: string) {
   return (
     model.startsWith("gpt-4-vision") ||

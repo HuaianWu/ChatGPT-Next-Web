@@ -59,6 +59,7 @@ import {
   getMessageImages,
   isVisionModel,
   compressImage,
+  getMessageVideos,
 } from "../utils";
 
 import dynamic from "next/dynamic";
@@ -425,6 +426,8 @@ export function ChatActions(props: {
   const config = useAppConfig();
   const navigate = useNavigate();
   const chatStore = useChatStore();
+  const session = chatStore.currentSession();
+  const messages = session.messages;
 
   // switch themes
   const theme = config.theme;
@@ -547,7 +550,13 @@ export function ChatActions(props: {
       />
 
       <ChatAction
-        onClick={() => setShowModelSelector(true)}
+        onClick={() => {
+          if (messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming) {
+            showToast('请等待视频生成后再进行切换');
+            return
+          }
+          setShowModelSelector(true)
+        }}
         text={currentModel}
         icon={<RobotIcon />}
       />
@@ -1219,7 +1228,7 @@ function _Chat() {
           const showActions =
             i > 0 &&
             !(message.preview || message.content.length === 0) &&
-            !isContext;
+            !isContext && message.content[0]?.type != 'video_url';
           const showTyping = message.preview || message.streaming;
 
           const shouldShowClearContextDivider = i === clearContextIndex - 1;
@@ -1331,26 +1340,33 @@ function _Chat() {
                   </div>
                   {showTyping && (
                     <div className={styles["chat-message-status"]}>
-                      {Locale.Chat.Typing}
+                      {messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
                     </div>
                   )}
                   <div className={styles["chat-message-item"]}>
-                    <Markdown
+                    {getMessageVideos(message).length == 1 ? (
+                        <video
+                            controls
+                            className={styles["chat-message-item-video"]}
+                            src={getMessageVideos(message)[0]}></video>
+                    ) : (<Markdown
                       content={getMessageTextContent(message)}
                       loading={
-                        (message.preview || message.streaming) &&
-                        message.content.length === 0 &&
-                        !isUser
-                      }
+                      (message.preview || message.streaming) &&
+                      message.content.length === 0 &&
+                      !isUser
+                    }
                       onContextMenu={(e) => onRightClick(e, message)}
                       onDoubleClickCapture={() => {
-                        if (!isMobileScreen) return;
-                        setUserInput(getMessageTextContent(message));
-                      }}
+                      if (!isMobileScreen) return;
+                      setUserInput(getMessageTextContent(message));
+                    }}
                       fontSize={fontSize}
                       parentRef={scrollRef}
                       defaultShow={i >= messages.length - 6}
-                    />
+                      />)
+                    }
+
                     {getMessageImages(message).length == 1 && (
                       <img
                         className={styles["chat-message-item-image"]}
@@ -1431,7 +1447,7 @@ function _Chat() {
             id="chat-input"
             ref={inputRef}
             className={styles["chat-input"]}
-            placeholder={Locale.Chat.Input(submitKey)}
+            placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : Locale.Chat.Input(submitKey)}
             onInput={(e) => onInput(e.currentTarget.value)}
             value={userInput}
             onKeyDown={onInputKeyDown}
@@ -1471,6 +1487,7 @@ function _Chat() {
             text={Locale.Chat.Send}
             className={styles["chat-input-send"]}
             type="primary"
+            disabled={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming}
             onClick={() => doSubmit(userInput)}
           />
         </label>
