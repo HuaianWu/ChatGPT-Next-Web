@@ -48,6 +48,8 @@ export interface ChatOptions {
   onFinish: (message: string | any) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
+  onRefreshVideo?: any,
+  session?: any
 }
 
 export interface LLMUsage {
@@ -71,6 +73,8 @@ export abstract class LLMApi {
   abstract chat(options: ChatOptions): Promise<void>;
   abstract usage(): Promise<LLMUsage>;
   abstract models(): Promise<LLMModel[]>;
+
+  video?: any;
 }
 
 type ProviderName = "openai" | "azure" | "claude" | "palm";

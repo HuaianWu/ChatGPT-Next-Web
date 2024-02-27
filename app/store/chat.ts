@@ -55,7 +55,7 @@ export interface ChatSession {
   lastUpdate: number;
   lastSummarizeIndex: number;
   clearContextIndex?: number;
-
+  videoId?: any,
   mask: Mask;
 }
 
@@ -290,6 +290,46 @@ export const useChatStore = createPersistStore(
         get().summarizeSession();
       },
 
+
+      async refreshVideo() {
+        const session = get().currentSession();
+        const modelConfig = session.mask.modelConfig;
+
+        var api: ClientApi;
+        if (modelConfig.model.startsWith("gemini")) {
+          api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
+        } else {
+          api = new ClientApi(ModelProvider.GPT);
+        }
+
+        const botMessage = session.messages[session.messages.length - 1];
+
+
+        // make request
+        api.llm.video({
+          session,
+          config: {...modelConfig, stream: !modelConfig.model.startsWith("video")},
+          onFinish(message: any) {
+            botMessage.streaming = false;
+            if (message) {
+              botMessage.content = message;
+              get().onNewMessage(botMessage);
+            }
+            ChatControllerPool.remove(session.id, botMessage.id);
+          },
+          onRefreshVideo(videoId: any) {
+            get().updateCurrentSession((session) => {
+              session.videoId = videoId;
+            });
+          },
+        });
+
+
+      },
+
+
       async onUserInput(content: string, attachImages?: string[]) {
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
@@ -399,10 +439,15 @@ export const useChatStore = createPersistStore(
           onController(controller) {
             // collect controller for stop/retry
             ChatControllerPool.addController(
-              session.id,
-              botMessage.id ?? messageIndex,
-              controller,
+                session.id,
+                botMessage.id ?? messageIndex,
+                controller,
             );
+          },
+          onRefreshVideo(videoId: any) {
+            get().updateCurrentSession((session) => {
+              session.videoId = videoId;
+            });
           },
         });
       },
@@ -547,9 +592,10 @@ export const useChatStore = createPersistStore(
         // should summarize topic after chating more than 50 words
         const SUMMARIZE_MIN_LEN = 50;
         if (
-          config.enableAutoGenerateTitle &&
-          session.topic === DEFAULT_TOPIC &&
-          countMessages(messages) >= SUMMARIZE_MIN_LEN
+            config.enableAutoGenerateTitle &&
+            session.topic === DEFAULT_TOPIC &&
+            !session.hasOwnProperty('videoId') &&
+            countMessages(messages) >= SUMMARIZE_MIN_LEN
         ) {
           const topicMessages = messages.concat(
             createMessage({
