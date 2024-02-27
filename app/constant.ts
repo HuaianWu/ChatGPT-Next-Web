@@ -72,6 +72,12 @@ export enum ServiceProvider {
 export enum ModelProvider {
   GPT = "GPT",
   GeminiPro = "GeminiPro",
+  Video = "Video"
+}
+
+export const VideoPath = {
+  ChatPath: "api/text2video",
+  VideoPath: "api/video",
 }
 
 export const OpenaiPath = {
@@ -287,6 +293,15 @@ export const DEFAULT_MODELS = [
       id: "google",
       providerName: "Google",
       providerType: "google",
+    },
+  },
+  {
+    name: "video",
+    available: true,
+    provider: {
+      id: "video",
+      providerName: "Video",
+      providerType: "video",
     },
   },
 ] as const;
