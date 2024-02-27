@@ -64,8 +64,17 @@ if (mode !== "export") {
 
   nextConfig.rewrites = async () => {
     const ret = [
+      // adjust for previous version directly using "/api/proxy/" as proxy base route
       {
-        source: "/api/proxy/:path*",
+        source: "/api/proxy/v1/:path*",
+        destination: "https://api.openai.com/v1/:path*",
+      },
+      {
+        source: "/api/proxy/google/:path*",
+        destination: "https://generativelanguage.googleapis.com/:path*",
+      },
+      {
+        source: "/api/proxy/openai/:path*",
         destination: "https://api.openai.com/:path*",
       },
       {
@@ -75,6 +84,14 @@ if (mode !== "export") {
       {
         source: "/sharegpt",
         destination: "https://sharegpt.com/api/conversations",
+      },
+      {
+        source: "/api/text2video",
+        destination: "http://59.49.28.154:6785/api/text2video",
+      },
+      {
+        source: "/api/video/:path*",
+        destination: "http://59.49.28.154:6785/api/video/:path*",
       },
     ];
 

@@ -4,6 +4,7 @@ import {
   DEFAULT_API_HOST,
   DEFAULT_MODELS,
   OpenaiPath,
+  VideoPath,
   REQUEST_TIMEOUT_MS,
   ServiceProvider,
 } from "@/app/constant";
@@ -30,6 +31,11 @@ import {
   getMessageImages,
   isVisionModel,
 } from "@/app/utils";
+import de from "../../locales/de";
+
+import {
+  showToast,
+} from "./../../components/ui-lib";
 
 export interface OpenAIListModelResponse {
   object: string;
@@ -40,7 +46,7 @@ export interface OpenAIListModelResponse {
   }>;
 }
 
-export class ChatGPTApi implements LLMApi {
+export class VideoApi implements LLMApi {
   private disableListModels = true;
 
   path(path: string): string {
@@ -54,25 +60,25 @@ export class ChatGPTApi implements LLMApi {
       );
     }
 
-    let baseUrl = isAzure ? accessStore.azureUrl : accessStore.openaiUrl;
+    let baseUrl = accessStore.videoUrl;
 
-    if (baseUrl.length === 0) {
-      const isApp = !!getClientConfig()?.isApp;
-      baseUrl = isApp
-        ? DEFAULT_API_HOST + "/proxy" + ApiPath.OpenAI
-        : ApiPath.OpenAI;
-    }
+    // if (baseUrl.length === 0) {
+    //   const isApp = !!getClientConfig()?.isApp;
+    //   baseUrl = isApp
+    //     ? DEFAULT_API_HOST + "/proxy" + ApiPath.OpenAI
+    //     : ApiPath.OpenAI;
+    // }
 
     if (baseUrl.endsWith("/")) {
       baseUrl = baseUrl.slice(0, baseUrl.length - 1);
     }
-    if (!baseUrl.startsWith("http") && !baseUrl.startsWith(ApiPath.OpenAI)) {
-      baseUrl = "https://" + baseUrl;
-    }
-
-    if (isAzure) {
-      path = makeAzurePath(path, accessStore.azureApiVersion);
-    }
+    // if (!baseUrl.startsWith("http") && !baseUrl.startsWith(ApiPath.OpenAI)) {
+    //   baseUrl = "https://" + baseUrl;
+    // }
+    //
+    // if (isAzure) {
+    //   path = makeAzurePath(path, accessStore.azureApiVersion);
+    // }
 
     console.log("[Proxy Endpoint] ", baseUrl, path);
 
@@ -99,25 +105,26 @@ export class ChatGPTApi implements LLMApi {
     };
 
     const requestPayload = {
-      messages,
-      stream: options.config.stream,
-      model: modelConfig.model,
-      temperature: modelConfig.temperature,
-      presence_penalty: modelConfig.presence_penalty,
-      frequency_penalty: modelConfig.frequency_penalty,
-      top_p: modelConfig.top_p,
+      // messages,
+      prompt: messages[messages.length - 1].content,
+      // stream: options.config.stream,
+      // model: modelConfig.model,
+      // temperature: modelConfig.temperature,
+      // presence_penalty: modelConfig.presence_penalty,
+      // frequency_penalty: modelConfig.frequency_penalty,
+      // top_p: modelConfig.top_p,
       // max_tokens: Math.max(modelConfig.max_tokens, 1024),
       // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
     };
 
-    console.log("[Request] openai payload: ", requestPayload);
+    console.log("[Request] video payload: ", requestPayload);
 
     const shouldStream = !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
 
     try {
-      const chatPath = this.path(OpenaiPath.ChatPath);
+      const chatPath = this.path(VideoPath.ChatPath);
       const chatPayload = {
         method: "POST",
         body: JSON.stringify(requestPayload),
@@ -130,6 +137,43 @@ export class ChatGPTApi implements LLMApi {
         () => controller.abort(),
         REQUEST_TIMEOUT_MS,
       );
+
+      let loopTimeOutId = null;
+
+
+      /**
+       * 循环获取视频
+       */
+      const loopGetVideo = async (videoId: any) => {
+        try {
+          const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
+            method: "GET",
+            headers: {
+              ...getHeaders(),
+            },
+          });
+          const resJson = (await res.json()) as any;
+          if (resJson.status == 'success') {
+            const extraInfo = [{
+              type: "video_url",
+              video_url: {
+                url: resJson.video_url,
+              },
+            }];
+            clearTimeout(loopTimeOutId);
+
+            options.onFinish(extraInfo);
+
+          } else {
+            loopTimeOutId = setTimeout(() => {
+              loopGetVideo();
+            }, 10000)
+          }
+
+        } catch (e) {
+          console.log(e)
+        }
+      }
 
       if (shouldStream) {
         let responseText = "";
@@ -173,8 +217,8 @@ export class ChatGPTApi implements LLMApi {
             clearTimeout(requestTimeoutId);
             const contentType = res.headers.get("content-type");
             console.log(
-              "[OpenAI] request response content type: ",
-              contentType,
+                "[OpenAI] request response content type: ",
+                contentType,
             );
 
             if (contentType?.startsWith("text/plain")) {
@@ -183,11 +227,11 @@ export class ChatGPTApi implements LLMApi {
             }
 
             if (
-              !res.ok ||
-              !res.headers
-                .get("content-type")
-                ?.startsWith(EventStreamContentType) ||
-              res.status !== 200
+                !res.ok ||
+                !res.headers
+                    .get("content-type")
+                    ?.startsWith(EventStreamContentType) ||
+                res.status !== 200
             ) {
               const responseTexts = [responseText];
               let extraInfo = await res.clone().text();
@@ -244,8 +288,14 @@ export class ChatGPTApi implements LLMApi {
         clearTimeout(requestTimeoutId);
 
         const resJson = await res.json();
-        const message = this.extractMessage(resJson);
-        options.onFinish(message);
+
+        if (resJson.video_id) {
+          showToast('请求成功！请等待视频生成');
+          loopGetVideo(resJson.video_id);
+        } else {
+          showToast('请求失败');
+          options.onFinish('请求失败，请稍后重试');
+        }
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
