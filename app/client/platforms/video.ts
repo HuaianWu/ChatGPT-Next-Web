@@ -138,7 +138,7 @@ export class VideoApi implements LLMApi {
         REQUEST_TIMEOUT_MS,
       );
 
-      let loopTimeOutId = null;
+      let loopTimeOutId:any = null;
 
 
       /**
@@ -166,7 +166,7 @@ export class VideoApi implements LLMApi {
 
           } else {
             loopTimeOutId = setTimeout(() => {
-              loopGetVideo();
+              loopGetVideo(videoId);
             }, 10000)
           }
 
@@ -294,7 +294,7 @@ export class VideoApi implements LLMApi {
           loopGetVideo(resJson.video_id);
         } else {
           showToast('请求失败');
-          options.onFinish('请求失败，请稍后重试');
+          options.onFinish(resJson?.message || '请求失败，请稍后重试');
         }
       }
     } catch (e) {
