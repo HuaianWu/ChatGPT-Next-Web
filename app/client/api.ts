@@ -28,7 +28,7 @@ export interface MultimodalContent {
 
 export interface RequestMessage {
   role: MessageRole;
-  content: string | MultimodalContent[];
+  content: string | MultimodalContent[] | any;
 }
 
 export interface LLMConfig {
@@ -45,7 +45,7 @@ export interface ChatOptions {
   config: LLMConfig;
 
   onUpdate?: (message: string, chunk: string) => void;
-  onFinish: (message: string | object) => void;
+  onFinish: (message: string | any) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
 }
