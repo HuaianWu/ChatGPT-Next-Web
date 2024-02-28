@@ -788,7 +788,7 @@ function _Chat() {
       const stopTiming = Date.now() - REQUEST_TIMEOUT_MS;
       session.messages.forEach((m) => {
         // check if should stop all stale messages
-        if (m.isError || new Date(m.date).getTime() < stopTiming) {
+        if ((m.isError || new Date(m.date).getTime() < stopTiming) && m.model != 'video') {
           if (m.streaming) {
             m.streaming = false;
           }
@@ -803,10 +803,14 @@ function _Chat() {
         }
       });
 
+      if (session.videoId) {
+        chatStore.refreshVideo();
+      }
+
       // auto sync mask config from global config
       if (session.mask.syncGlobalConfig) {
         console.log("[Mask] syncing from global, name = ", session.mask.name);
-        session.mask.modelConfig = { ...config.modelConfig };
+        session.mask.modelConfig = {...config.modelConfig};
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1444,20 +1448,21 @@ function _Chat() {
           htmlFor="chat-input"
         >
           <textarea
-            id="chat-input"
-            ref={inputRef}
-            className={styles["chat-input"]}
-            placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : Locale.Chat.Input(submitKey)}
-            onInput={(e) => onInput(e.currentTarget.value)}
-            value={userInput}
-            onKeyDown={onInputKeyDown}
-            onFocus={scrollToBottom}
-            onClick={scrollToBottom}
-            rows={inputRows}
-            autoFocus={autoFocus}
-            style={{
-              fontSize: config.fontSize,
-            }}
+              id="chat-input"
+              ref={inputRef}
+              className={styles["chat-input"]}
+              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : Locale.Chat.Input(submitKey)}
+              onInput={(e) => onInput(e.currentTarget.value)}
+              value={userInput}
+              onKeyDown={onInputKeyDown}
+              onFocus={scrollToBottom}
+              onClick={scrollToBottom}
+              rows={inputRows}
+              autoFocus={autoFocus}
+              disabled={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming}
+              style={{
+                fontSize: config.fontSize,
+              }}
           />
           {attachImages.length != 0 && (
             <div className={styles["attach-images"]}>

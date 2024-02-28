@@ -89,6 +89,56 @@ export class VideoApi implements LLMApi {
     return res.choices?.at(0)?.message?.content ?? "";
   }
 
+  async video(options: ChatOptions) {
+
+    let loopTimeOutId: any = null;
+
+    /**
+     * 循环获取视频
+     */
+    const loopGetVideo = async (videoId: any) => {
+      try {
+        const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
+          method: "GET",
+          headers: {
+            ...getHeaders(),
+          },
+        });
+        const resJson = (await res.json()) as any;
+        if (resJson.status == 'success') {
+          const extraInfo = [{
+            type: "video_url",
+            video_url: {
+              url: resJson.video_url,
+            },
+          }];
+          clearTimeout(loopTimeOutId);
+          options.onRefreshVideo('');
+          options.onFinish(extraInfo);
+
+        } else {
+          loopTimeOutId = setTimeout(() => {
+            loopGetVideo(videoId);
+          }, 10000)
+        }
+
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+
+    if (options.session.videoId) {
+      showToast('请等待视频生成');
+      loopGetVideo(options.session.videoId);
+    } else {
+      showToast('请求失败');
+      options.onFinish('');
+      // options.onFinish(resJson?.message || '请求失败，请稍后重试');
+    }
+
+  }
+
   async chat(options: ChatOptions) {
     const visionModel = isVisionModel(options.config.model);
     const messages = options.messages.map((v) => ({
@@ -161,7 +211,7 @@ export class VideoApi implements LLMApi {
               },
             }];
             clearTimeout(loopTimeOutId);
-
+            options.onRefreshVideo('');
             options.onFinish(extraInfo);
 
           } else {
@@ -291,9 +341,14 @@ export class VideoApi implements LLMApi {
 
         if (resJson.video_id) {
           showToast('请求成功！请等待视频生成');
+          options.onRefreshVideo(resJson.video_id);
           loopGetVideo(resJson.video_id);
+          // } else if (resJson.message == '有任务在处理中') {
+          //   showToast(resJson?.message || '有任务在处理中');
+          //   options.onFinish('');
         } else {
-          showToast('请求失败');
+          showToast(resJson?.message || '请求失败，请稍后重试');
+          // options.onFinish('');
           options.onFinish(resJson?.message || '请求失败，请稍后重试');
         }
       }
