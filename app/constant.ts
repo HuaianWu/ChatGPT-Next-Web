@@ -72,13 +72,18 @@ export enum ServiceProvider {
 export enum ModelProvider {
   GPT = "GPT",
   GeminiPro = "GeminiPro",
-  Video = "Video"
+  Video = "Video",
+  Excel = "Excel",
 }
 
 export const VideoPath = {
   ChatPath: "api/text2video",
   VideoPath: "api/video",
 }
+
+export const ExcelPath = {
+  ChatPath: "api/getpowerplan",
+};
 
 export const OpenaiPath = {
   ChatPath: "v1/chat/completions",
@@ -302,6 +307,15 @@ export const DEFAULT_MODELS = [
       id: "video",
       providerName: "Video",
       providerType: "video",
+    },
+  },
+  {
+    name: "发电计划",
+    available: true,
+    provider: {
+      id: "excel",
+      providerName: "Excel",
+      providerType: "excel",
     },
   },
 ] as const;

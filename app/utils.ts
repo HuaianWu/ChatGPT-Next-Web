@@ -304,10 +304,28 @@ export function getMessageVideos(message: RequestMessage): string[] {
   return urls;
 }
 
+export function getMessageIsExcel(message: RequestMessage): boolean {
+  function isExcelUrl(url: any) {
+    const extensionRegex = /\.([a-zA-Z0-9]+)(?:[\?#]|$)/i;
+    const match = url.match(extensionRegex);
+
+    if (match) {
+      const fileExtension = match[1].toLowerCase();
+      const excelExtensions = ["xls", "xlsx", "xlsm", "xlsb", "xml", "csv"]; // 常见Excel格式列表
+
+      return excelExtensions.includes(fileExtension);
+    }
+
+    return false; // 如果没有匹配到扩展名，则认为不是Excel文件
+  }
+
+  return isExcelUrl(message.content);
+}
+
 export function isVisionModel(model: string) {
   return (
-    model.startsWith("gpt-4-vision") ||
-    model.startsWith("gemini-pro-vision") ||
-    !DEFAULT_MODELS.find((m) => m.name == model)
+      model.startsWith("gpt-4-vision") ||
+      model.startsWith("gemini-pro-vision") ||
+      !DEFAULT_MODELS.find((m) => m.name == model)
   );
 }

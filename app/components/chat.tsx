@@ -36,6 +36,7 @@ import AutoIcon from "../icons/auto.svg";
 import BottomIcon from "../icons/bottom.svg";
 import StopIcon from "../icons/pause.svg";
 import RobotIcon from "../icons/robot.svg";
+import ExcelIcon from "../icons/excel.svg";
 
 import {
   ChatMessage,
@@ -60,6 +61,7 @@ import {
   isVisionModel,
   compressImage,
   getMessageVideos,
+  getMessageIsExcel,
 } from "../utils";
 
 import dynamic from "next/dynamic";
@@ -553,6 +555,10 @@ export function ChatActions(props: {
         onClick={() => {
           if (messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming) {
             showToast('请等待视频生成后再进行切换');
+            return
+          }
+          if (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming) {
+            showToast('请等待文件生成后再进行切换');
             return
           }
           setShowModelSelector(true)
@@ -1344,7 +1350,7 @@ function _Chat() {
                   </div>
                   {showTyping && (
                     <div className={styles["chat-message-status"]}>
-                      {messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
+                      {messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
                     </div>
                   )}
                   <div className={styles["chat-message-item"]}>
@@ -1353,22 +1359,34 @@ function _Chat() {
                             controls
                             className={styles["chat-message-item-video"]}
                             src={getMessageVideos(message)[0]}></video>
-                    ) : (<Markdown
-                      content={getMessageTextContent(message)}
-                      loading={
-                      (message.preview || message.streaming) &&
-                      message.content.length === 0 &&
-                      !isUser
-                    }
-                      onContextMenu={(e) => onRightClick(e, message)}
-                      onDoubleClickCapture={() => {
-                      if (!isMobileScreen) return;
-                      setUserInput(getMessageTextContent(message));
-                    }}
-                      fontSize={fontSize}
-                      parentRef={scrollRef}
-                      defaultShow={i >= messages.length - 6}
-                      />)
+                    ) : (getMessageIsExcel(message) ? (<div className={styles["download-excel"]}>
+                      <ExcelIcon className={styles["download-icon"]}></ExcelIcon>
+                      <div onClick={() => {
+                        console.log('message', message);
+                        let downloadDom = document.createElement('a')
+                        downloadDom.href = message.content;
+                        // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
+                        document.body.appendChild(downloadDom)
+                        downloadDom.click()
+                        document.body.removeChild(downloadDom)
+                      }} className={styles["download-btn"]}>下载
+                      </div>
+                    </div>) : (<Markdown
+                        content={getMessageTextContent(message)}
+                        loading={
+                          (message.preview || message.streaming) &&
+                          message.content.length === 0 &&
+                          !isUser
+                        }
+                        onContextMenu={(e) => onRightClick(e, message)}
+                        onDoubleClickCapture={() => {
+                          if (!isMobileScreen) return;
+                          setUserInput(getMessageTextContent(message));
+                        }}
+                        fontSize={fontSize}
+                        parentRef={scrollRef}
+                        defaultShow={i >= messages.length - 6}
+                    />))
                     }
 
                     {getMessageImages(message).length == 1 && (
@@ -1451,7 +1469,7 @@ function _Chat() {
               id="chat-input"
               ref={inputRef}
               className={styles["chat-input"]}
-              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : Locale.Chat.Input(submitKey)}
+              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming ? '请求成功！请等待文件生成' : Locale.Chat.Input(submitKey))}
               onInput={(e) => onInput(e.currentTarget.value)}
               value={userInput}
               onKeyDown={onInputKeyDown}
@@ -1459,7 +1477,7 @@ function _Chat() {
               onClick={scrollToBottom}
               rows={inputRows}
               autoFocus={autoFocus}
-              disabled={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming}
+              disabled={messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
               style={{
                 fontSize: config.fontSize,
               }}
@@ -1488,12 +1506,12 @@ function _Chat() {
             </div>
           )}
           <IconButton
-            icon={<SendWhiteIcon />}
-            text={Locale.Chat.Send}
-            className={styles["chat-input-send"]}
-            type="primary"
-            disabled={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming}
-            onClick={() => doSubmit(userInput)}
+              icon={<SendWhiteIcon />}
+              text={Locale.Chat.Send}
+              className={styles["chat-input-send"]}
+              type="primary"
+              disabled={messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
+              onClick={() => doSubmit(userInput)}
           />
         </label>
       </div>
