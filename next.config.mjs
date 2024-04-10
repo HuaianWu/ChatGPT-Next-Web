@@ -93,6 +93,10 @@ if (mode !== "export") {
         source: "/api/video/:path*",
         destination: "http://59.49.28.154:6785/api/video/:path*",
       },
+      {
+        source: "/api/getpowerplan",
+        destination: "http://openai.jzxhnh.com/api/getpowerplan",
+      },
     ];
 
     return {
