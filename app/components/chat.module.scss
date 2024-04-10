@@ -426,6 +426,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  cursor: pointer;
 }
 
 .download-icon {
@@ -435,9 +436,7 @@
 
 .download-btn {
   font-size: 14px;
-  cursor: pointer;
 }
-
 
 .chat-message-item-image {
   width: 100%;

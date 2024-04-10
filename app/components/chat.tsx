@@ -62,6 +62,7 @@ import {
   compressImage,
   getMessageVideos,
   getMessageIsExcel,
+  extractFileNameFromExcelUrl,
 } from "../utils";
 
 import dynamic from "next/dynamic";
@@ -1349,11 +1350,19 @@ function _Chat() {
                     )}
                   </div>
                   {showTyping && (
-                    <div className={styles["chat-message-status"]}>
-                      {messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
-                    </div>
+                      <div className={styles["chat-message-status"]}>
+                        {messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
+                      </div>
                   )}
-                  <div className={styles["chat-message-item"]}>
+                  <div onClick={() => {
+                    console.log('message', message);
+                    let downloadDom = document.createElement('a')
+                    downloadDom.href = message.content;
+                    // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
+                    document.body.appendChild(downloadDom)
+                    downloadDom.click()
+                    document.body.removeChild(downloadDom)
+                  }} className={styles["chat-message-item"]}>
                     {getMessageVideos(message).length == 1 ? (
                         <video
                             controls
@@ -1361,16 +1370,7 @@ function _Chat() {
                             src={getMessageVideos(message)[0]}></video>
                     ) : (getMessageIsExcel(message) ? (<div className={styles["download-excel"]}>
                       <ExcelIcon className={styles["download-icon"]}></ExcelIcon>
-                      <div onClick={() => {
-                        console.log('message', message);
-                        let downloadDom = document.createElement('a')
-                        downloadDom.href = message.content;
-                        // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
-                        document.body.appendChild(downloadDom)
-                        downloadDom.click()
-                        document.body.removeChild(downloadDom)
-                      }} className={styles["download-btn"]}>下载
-                      </div>
+                      <div className={styles["download-btn"]}>{extractFileNameFromExcelUrl(message.content)}</div>
                     </div>) : (<Markdown
                         content={getMessageTextContent(message)}
                         loading={
