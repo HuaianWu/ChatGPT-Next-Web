@@ -8,7 +8,8 @@ import {
 import { ChatMessage, ModelType, useAccessStore, useChatStore } from "../store";
 import { ChatGPTApi } from "./platforms/openai";
 import { GeminiProApi } from "./platforms/google";
-import { VideoApi } from "./platforms/video";
+import {VideoApi} from "./platforms/video";
+import {ExcelApi} from "./platforms/excel";
 export const ROLES = ["system", "user", "assistant"] as const;
 export type MessageRole = (typeof ROLES)[number];
 
@@ -108,6 +109,11 @@ export class ClientApi {
     }
     if (provider === ModelProvider.Video) {
       this.llm = new VideoApi();
+      return;
+    }
+
+    if (provider === ModelProvider.Excel) {
+      this.llm = new ExcelApi();
       return;
     }
     this.llm = new ChatGPTApi();

@@ -390,6 +390,8 @@ export const useChatStore = createPersistStore(
           api = new ClientApi(ModelProvider.GeminiPro);
         } else if (modelConfig.model.startsWith("video")) {
           api = new ClientApi(ModelProvider.Video);
+        } else if (modelConfig.model.startsWith("发电计划")) {
+          api = new ClientApi(ModelProvider.Excel);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -397,7 +399,10 @@ export const useChatStore = createPersistStore(
         // make request
         api.llm.chat({
           messages: sendMessages,
-          config: { ...modelConfig, stream: !modelConfig.model.startsWith("video") },
+          config: {
+            ...modelConfig,
+            stream: !(modelConfig.model.startsWith("video") || modelConfig.model.startsWith("发电计划"))
+          },
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {
@@ -577,11 +582,15 @@ export const useChatStore = createPersistStore(
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
+        if (['video', '发电计划'].includes(modelConfig.model)) return;
+
         var api: ClientApi;
         if (modelConfig.model.startsWith("gemini")) {
           api = new ClientApi(ModelProvider.GeminiPro);
         } else if (modelConfig.model.startsWith("video")) {
           api = new ClientApi(ModelProvider.Video);
+        } else if (modelConfig.model.startsWith("发电计划")) {
+          api = new ClientApi(ModelProvider.Excel);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -594,7 +603,6 @@ export const useChatStore = createPersistStore(
         if (
             config.enableAutoGenerateTitle &&
             session.topic === DEFAULT_TOPIC &&
-            !session.hasOwnProperty('videoId') &&
             countMessages(messages) >= SUMMARIZE_MIN_LEN
         ) {
           const topicMessages = messages.concat(
