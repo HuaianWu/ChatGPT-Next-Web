@@ -4,10 +4,12 @@ import {
   DEFAULT_API_HOST,
   DEFAULT_MODELS,
   OpenaiPath,
+  VideoPath,
+  ExcelPath,
   REQUEST_TIMEOUT_MS,
   ServiceProvider,
 } from "@/app/constant";
-import { useAccessStore, useAppConfig, useChatStore } from "@/app/store";
+import {useAccessStore, useAppConfig, useChatStore} from "@/app/store";
 
 import {
   ChatOptions,
@@ -22,14 +24,19 @@ import {
   EventStreamContentType,
   fetchEventSource,
 } from "@fortaine/fetch-event-source";
-import { prettyObject } from "@/app/utils/format";
-import { getClientConfig } from "@/app/config/client";
-import { makeAzurePath } from "@/app/azure";
+import {prettyObject} from "@/app/utils/format";
+import {getClientConfig} from "@/app/config/client";
+import {makeAzurePath} from "@/app/azure";
 import {
   getMessageTextContent,
   getMessageImages,
   isVisionModel,
 } from "@/app/utils";
+import de from "../../locales/de";
+
+import {
+  showToast,
+} from "./../../components/ui-lib";
 
 export interface OpenAIListModelResponse {
   object: string;
@@ -40,7 +47,7 @@ export interface OpenAIListModelResponse {
   }>;
 }
 
-export class ChatGPTApi implements LLMApi {
+export class ExcelApi implements LLMApi {
   private disableListModels = true;
 
   path(path: string): string {
@@ -50,29 +57,29 @@ export class ChatGPTApi implements LLMApi {
 
     if (isAzure && !accessStore.isValidAzure()) {
       throw Error(
-        "incomplete azure config, please check it in your settings page",
+          "incomplete azure config, please check it in your settings page",
       );
     }
 
-    let baseUrl = isAzure ? accessStore.azureUrl : accessStore.openaiUrl;
+    let baseUrl = accessStore.excelUrl;
 
-    if (baseUrl.length === 0) {
-      const isApp = !!getClientConfig()?.isApp;
-      baseUrl = isApp
-        ? DEFAULT_API_HOST + "/proxy" + ApiPath.OpenAI
-        : ApiPath.OpenAI;
-    }
+    // if (baseUrl.length === 0) {
+    //   const isApp = !!getClientConfig()?.isApp;
+    //   baseUrl = isApp
+    //     ? DEFAULT_API_HOST + "/proxy" + ApiPath.OpenAI
+    //     : ApiPath.OpenAI;
+    // }
 
     if (baseUrl.endsWith("/")) {
       baseUrl = baseUrl.slice(0, baseUrl.length - 1);
     }
-    if (!baseUrl.startsWith("http") && !baseUrl.startsWith(ApiPath.OpenAI)) {
-      baseUrl = "https://" + baseUrl;
-    }
-
-    if (isAzure) {
-      path = makeAzurePath(path, accessStore.azureApiVersion);
-    }
+    // if (!baseUrl.startsWith("http") && !baseUrl.startsWith(ApiPath.OpenAI)) {
+    //   baseUrl = "https://" + baseUrl;
+    // }
+    //
+    // if (isAzure) {
+    //   path = makeAzurePath(path, accessStore.azureApiVersion);
+    // }
 
     console.log("[Proxy Endpoint] ", baseUrl, path);
 
@@ -81,6 +88,56 @@ export class ChatGPTApi implements LLMApi {
 
   extractMessage(res: any) {
     return res.choices?.at(0)?.message?.content ?? "";
+  }
+
+  async video(options: ChatOptions) {
+
+    let loopTimeOutId: any = null;
+
+    /**
+     * 循环获取视频
+     */
+    const loopGetVideo = async (videoId: any) => {
+      try {
+        const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
+          method: "GET",
+          headers: {
+            ...getHeaders(),
+          },
+        });
+        const resJson = (await res.json()) as any;
+        if (resJson.status == 'success') {
+          const extraInfo = [{
+            type: "video_url",
+            video_url: {
+              url: resJson.video_url,
+            },
+          }];
+          clearTimeout(loopTimeOutId);
+          options.onRefreshVideo('');
+          options.onFinish(extraInfo);
+
+        } else {
+          loopTimeOutId = setTimeout(() => {
+            loopGetVideo(videoId);
+          }, 10000)
+        }
+
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+
+    if (options.session.videoId) {
+      showToast('请等待视频生成');
+      loopGetVideo(options.session.videoId);
+    } else {
+      showToast('请求失败');
+      options.onFinish('');
+      // options.onFinish(resJson?.message || '请求失败，请稍后重试');
+    }
+
   }
 
   async chat(options: ChatOptions) {
@@ -99,25 +156,26 @@ export class ChatGPTApi implements LLMApi {
     };
 
     const requestPayload = {
-      messages,
-      stream: options.config.stream,
-      model: modelConfig.model,
-      temperature: modelConfig.temperature,
-      presence_penalty: modelConfig.presence_penalty,
-      frequency_penalty: modelConfig.frequency_penalty,
-      top_p: modelConfig.top_p,
+      // messages,
+      ask: messages[messages.length - 1].content,
+      // stream: options.config.stream,
+      // model: modelConfig.model,
+      // temperature: modelConfig.temperature,
+      // presence_penalty: modelConfig.presence_penalty,
+      // frequency_penalty: modelConfig.frequency_penalty,
+      // top_p: modelConfig.top_p,
       // max_tokens: Math.max(modelConfig.max_tokens, 1024),
       // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
     };
 
-    console.log("[Request] openai payload: ", requestPayload);
+    console.log("[Request] video payload: ", requestPayload);
 
     const shouldStream = !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
 
     try {
-      const chatPath = this.path(OpenaiPath.ChatPath);
+      const chatPath = this.path(ExcelPath.ChatPath);
       const chatPayload = {
         method: "POST",
         body: JSON.stringify(requestPayload),
@@ -127,9 +185,46 @@ export class ChatGPTApi implements LLMApi {
 
       // make a fetch request
       const requestTimeoutId = setTimeout(
-        () => controller.abort(),
-        REQUEST_TIMEOUT_MS,
+          () => controller.abort(),
+          REQUEST_TIMEOUT_MS,
       );
+
+      let loopTimeOutId: any = null;
+
+
+      /**
+       * 循环获取视频
+       */
+      const loopGetVideo = async (videoId: any) => {
+        try {
+          const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
+            method: "GET",
+            headers: {
+              ...getHeaders(),
+            },
+          });
+          const resJson = (await res.json()) as any;
+          if (resJson.status == 'success') {
+            const extraInfo = [{
+              type: "video_url",
+              video_url: {
+                url: resJson.video_url,
+              },
+            }];
+            clearTimeout(loopTimeOutId);
+            options.onRefreshVideo('');
+            options.onFinish(extraInfo);
+
+          } else {
+            loopTimeOutId = setTimeout(() => {
+              loopGetVideo(videoId);
+            }, 10000)
+          }
+
+        } catch (e) {
+          console.log(e)
+        }
+      }
 
       if (shouldStream) {
         let responseText = "";
@@ -173,8 +268,8 @@ export class ChatGPTApi implements LLMApi {
             clearTimeout(requestTimeoutId);
             const contentType = res.headers.get("content-type");
             console.log(
-              "[OpenAI] request response content type: ",
-              contentType,
+                "[OpenAI] request response content type: ",
+                contentType,
             );
 
             if (contentType?.startsWith("text/plain")) {
@@ -183,18 +278,19 @@ export class ChatGPTApi implements LLMApi {
             }
 
             if (
-              !res.ok ||
-              !res.headers
-                .get("content-type")
-                ?.startsWith(EventStreamContentType) ||
-              res.status !== 200
+                !res.ok ||
+                !res.headers
+                    .get("content-type")
+                    ?.startsWith(EventStreamContentType) ||
+                res.status !== 200
             ) {
               const responseTexts = [responseText];
               let extraInfo = await res.clone().text();
               try {
                 const resJson = await res.clone().json();
                 extraInfo = prettyObject(resJson);
-              } catch {}
+              } catch {
+              }
 
               if (res.status === 401) {
                 responseTexts.push(Locale.Error.Unauthorized);
@@ -244,20 +340,30 @@ export class ChatGPTApi implements LLMApi {
         clearTimeout(requestTimeoutId);
 
         const resJson = await res.json();
-        const message = this.extractMessage(resJson);
-        options.onFinish(message);
+
+        if (resJson.status == 'success' && resJson.url) {
+          showToast('请求成功！请等待文件生成');
+          // setTimeout(() => {
+          options.onFinish(resJson.url);
+          // }, 15000)
+        } else {
+          showToast(resJson?.message || '请求失败，请稍后重试');
+          // options.onFinish('');
+          options.onFinish(resJson?.message || '请求失败，请稍后重试');
+        }
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
       options.onError?.(e as Error);
     }
   }
+
   async usage() {
     const formatDate = (d: Date) =>
-      `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-        .getDate()
-        .toString()
-        .padStart(2, "0")}`;
+        `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+            .getDate()
+            .toString()
+            .padStart(2, "0")}`;
     const ONE_DAY = 1 * 24 * 60 * 60 * 1000;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -266,13 +372,13 @@ export class ChatGPTApi implements LLMApi {
 
     const [used, subs] = await Promise.all([
       fetch(
-        this.path(
-          `${OpenaiPath.UsagePath}?start_date=${startDate}&end_date=${endDate}`,
-        ),
-        {
-          method: "GET",
-          headers: getHeaders(),
-        },
+          this.path(
+              `${OpenaiPath.UsagePath}?start_date=${startDate}&end_date=${endDate}`,
+          ),
+          {
+            method: "GET",
+            headers: getHeaders(),
+          },
       ),
       fetch(this.path(OpenaiPath.SubsPath), {
         method: "GET",
@@ -349,4 +455,5 @@ export class ChatGPTApi implements LLMApi {
     }));
   }
 }
-export { OpenaiPath };
+
+export {ExcelPath};

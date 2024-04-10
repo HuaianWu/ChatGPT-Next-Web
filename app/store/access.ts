@@ -12,7 +12,9 @@ import { ensure } from "../utils/clone";
 let fetchState = 0; // 0 not fetch, 1 fetching, 2 done
 
 const DEFAULT_OPENAI_URL =
-  getClientConfig()?.buildMode === "export" ? DEFAULT_API_HOST : ApiPath.OpenAI;
+  getClientConfig()?.buildMode === "export"
+    ? DEFAULT_API_HOST + "/api/proxy/openai"
+    : ApiPath.OpenAI;
 
 const DEFAULT_ACCESS_STATE = {
   accessCode: "",
@@ -25,22 +27,24 @@ const DEFAULT_ACCESS_STATE = {
   openaiApiKey: "",
 
   // azure
-  azureUrl: "",
-  azureApiKey: "",
-  azureApiVersion: "2023-08-01-preview",
+    azureUrl: "",
+    azureApiKey: "",
+    azureApiVersion: "2023-08-01-preview",
 
-  // google ai studio
-  googleUrl: "",
-  googleApiKey: "",
-  googleApiVersion: "v1",
+    // google ai studio
+    googleUrl: "",
+    googleApiKey: "",
+    googleApiVersion: "v1",
 
-  // server config
-  needCode: true,
-  hideUserApiKey: false,
-  hideBalanceQuery: false,
-  disableGPT4: false,
-  disableFastLink: false,
-  customModels: "",
+    videoUrl: "",
+    excelUrl: "",
+    // server config
+    needCode: true,
+    hideUserApiKey: false,
+    hideBalanceQuery: false,
+    disableGPT4: false,
+    disableFastLink: false,
+    customModels: "",
 };
 
 export const useAccessStore = createPersistStore(

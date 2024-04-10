@@ -1,4 +1,4 @@
-import { trimTopic } from "../utils";
+import { trimTopic, getMessageTextContent } from "../utils";
 
 import Locale, { getLang } from "../locales";
 import { showToast } from "../components/ui-lib";
@@ -6,13 +6,15 @@ import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { createEmptyMask, Mask } from "./mask";
 import {
   DEFAULT_INPUT_TEMPLATE,
+  DEFAULT_MODELS,
   DEFAULT_SYSTEM_TEMPLATE,
   KnowledgeCutOffDate,
   ModelProvider,
   StoreKey,
   SUMMARIZE_MODEL,
+  GEMINI_SUMMARIZE_MODEL,
 } from "../constant";
-import { ClientApi, RequestMessage } from "../client/api";
+import { ClientApi, RequestMessage, MultimodalContent } from "../client/api";
 import { ChatControllerPool } from "../client/controller";
 import { prettyObject } from "../utils/format";
 import { estimateTokenLength } from "../utils/token";
@@ -53,7 +55,7 @@ export interface ChatSession {
   lastUpdate: number;
   lastSummarizeIndex: number;
   clearContextIndex?: number;
-
+  videoId?: any,
   mask: Mask;
 }
 
@@ -83,18 +85,38 @@ function createEmptySession(): ChatSession {
 
 function getSummarizeModel(currentModel: string) {
   // if it is using gpt-* models, force to use 3.5 to summarize
-  return currentModel.startsWith("gpt") ? SUMMARIZE_MODEL : currentModel;
+  if (currentModel.startsWith("gpt")) {
+    return SUMMARIZE_MODEL;
+  }
+  if (currentModel.startsWith("gemini-pro")) {
+    return GEMINI_SUMMARIZE_MODEL;
+  }
+  return currentModel;
 }
 
 function countMessages(msgs: ChatMessage[]) {
-  return msgs.reduce((pre, cur) => pre + estimateTokenLength(cur.content), 0);
+  return msgs.reduce(
+    (pre, cur) => pre + estimateTokenLength(getMessageTextContent(cur)),
+    0,
+  );
 }
 
 function fillTemplateWith(input: string, modelConfig: ModelConfig) {
-  let cutoff =
+  const cutoff =
     KnowledgeCutOffDate[modelConfig.model] ?? KnowledgeCutOffDate.default;
+  // Find the model in the DEFAULT_MODELS array that matches the modelConfig.model
+  const modelInfo = DEFAULT_MODELS.find((m) => m.name === modelConfig.model);
+
+  var serviceProvider = "OpenAI";
+  if (modelInfo) {
+    // TODO: auto detect the providerName from the modelConfig.model
+
+    // Directly use the providerName from the modelInfo
+    serviceProvider = modelInfo.provider.providerName;
+  }
 
   const vars = {
+    ServiceProvider: serviceProvider,
     cutoff,
     model: modelConfig.model,
     time: new Date().toLocaleString(),
@@ -111,7 +133,8 @@ function fillTemplateWith(input: string, modelConfig: ModelConfig) {
   }
 
   Object.entries(vars).forEach(([name, value]) => {
-    output = output.replaceAll(`{{${name}}}`, value);
+    const regex = new RegExp(`{{${name}}}`, "g");
+    output = output.replace(regex, value.toString()); // Ensure value is a string
   });
 
   return output;
@@ -267,16 +290,76 @@ export const useChatStore = createPersistStore(
         get().summarizeSession();
       },
 
-      async onUserInput(content: string) {
+
+      async refreshVideo() {
+        const session = get().currentSession();
+        const modelConfig = session.mask.modelConfig;
+
+        var api: ClientApi;
+        if (modelConfig.model.startsWith("gemini")) {
+          api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
+        } else {
+          api = new ClientApi(ModelProvider.GPT);
+        }
+
+        const botMessage = session.messages[session.messages.length - 1];
+
+
+        // make request
+        api.llm.video({
+          session,
+          config: {...modelConfig, stream: !modelConfig.model.startsWith("video")},
+          onFinish(message: any) {
+            botMessage.streaming = false;
+            if (message) {
+              botMessage.content = message;
+              get().onNewMessage(botMessage);
+            }
+            ChatControllerPool.remove(session.id, botMessage.id);
+          },
+          onRefreshVideo(videoId: any) {
+            get().updateCurrentSession((session) => {
+              session.videoId = videoId;
+            });
+          },
+        });
+
+
+      },
+
+
+      async onUserInput(content: string, attachImages?: string[]) {
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
         const userContent = fillTemplateWith(content, modelConfig);
         console.log("[User Input] after template: ", userContent);
 
-        const userMessage: ChatMessage = createMessage({
+        let mContent: string | MultimodalContent[] = userContent;
+
+        if (attachImages && attachImages.length > 0) {
+          mContent = [
+            {
+              type: "text",
+              text: userContent,
+            },
+          ];
+          mContent = mContent.concat(
+            attachImages.map((url) => {
+              return {
+                type: "image_url",
+                image_url: {
+                  url: url,
+                },
+              };
+            }),
+          );
+        }
+        let userMessage: ChatMessage = createMessage({
           role: "user",
-          content: userContent,
+          content: mContent,
         });
 
         const botMessage: ChatMessage = createMessage({
@@ -294,7 +377,7 @@ export const useChatStore = createPersistStore(
         get().updateCurrentSession((session) => {
           const savedUserMessage = {
             ...userMessage,
-            content,
+            content: mContent,
           };
           session.messages = session.messages.concat([
             savedUserMessage,
@@ -303,8 +386,12 @@ export const useChatStore = createPersistStore(
         });
 
         var api: ClientApi;
-        if (modelConfig.model === "gemini-pro") {
+        if (modelConfig.model.startsWith("gemini")) {
           api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
+        } else if (modelConfig.model.startsWith("发电计划")) {
+          api = new ClientApi(ModelProvider.Excel);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -312,7 +399,10 @@ export const useChatStore = createPersistStore(
         // make request
         api.llm.chat({
           messages: sendMessages,
-          config: { ...modelConfig, stream: true },
+          config: {
+            ...modelConfig,
+            stream: !(modelConfig.model.startsWith("video") || modelConfig.model.startsWith("发电计划"))
+          },
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {
@@ -354,10 +444,15 @@ export const useChatStore = createPersistStore(
           onController(controller) {
             // collect controller for stop/retry
             ChatControllerPool.addController(
-              session.id,
-              botMessage.id ?? messageIndex,
-              controller,
+                session.id,
+                botMessage.id ?? messageIndex,
+                controller,
             );
+          },
+          onRefreshVideo(videoId: any) {
+            get().updateCurrentSession((session) => {
+              session.videoId = videoId;
+            });
           },
         });
       },
@@ -448,7 +543,7 @@ export const useChatStore = createPersistStore(
         ) {
           const msg = messages[i];
           if (!msg || msg.isError) continue;
-          tokenCount += estimateTokenLength(msg.content);
+          tokenCount += estimateTokenLength(getMessageTextContent(msg));
           reversedRecentMessages.push(msg);
         }
 
@@ -487,9 +582,15 @@ export const useChatStore = createPersistStore(
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
+        if (['video', '发电计划'].includes(modelConfig.model)) return;
+
         var api: ClientApi;
-        if (modelConfig.model === "gemini-pro") {
+        if (modelConfig.model.startsWith("gemini")) {
           api = new ClientApi(ModelProvider.GeminiPro);
+        } else if (modelConfig.model.startsWith("video")) {
+          api = new ClientApi(ModelProvider.Video);
+        } else if (modelConfig.model.startsWith("发电计划")) {
+          api = new ClientApi(ModelProvider.Excel);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -500,9 +601,9 @@ export const useChatStore = createPersistStore(
         // should summarize topic after chating more than 50 words
         const SUMMARIZE_MIN_LEN = 50;
         if (
-          config.enableAutoGenerateTitle &&
-          session.topic === DEFAULT_TOPIC &&
-          countMessages(messages) >= SUMMARIZE_MIN_LEN
+            config.enableAutoGenerateTitle &&
+            session.topic === DEFAULT_TOPIC &&
+            countMessages(messages) >= SUMMARIZE_MIN_LEN
         ) {
           const topicMessages = messages.concat(
             createMessage({

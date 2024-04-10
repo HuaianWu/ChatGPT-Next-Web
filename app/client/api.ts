@@ -8,15 +8,28 @@ import {
 import { ChatMessage, ModelType, useAccessStore, useChatStore } from "../store";
 import { ChatGPTApi } from "./platforms/openai";
 import { GeminiProApi } from "./platforms/google";
+import {VideoApi} from "./platforms/video";
+import {ExcelApi} from "./platforms/excel";
 export const ROLES = ["system", "user", "assistant"] as const;
 export type MessageRole = (typeof ROLES)[number];
 
 export const Models = ["gpt-3.5-turbo", "gpt-4"] as const;
 export type ChatModel = ModelType;
 
+export interface MultimodalContent {
+  type: "text" | "image_url" | "video_url";
+  text?: string;
+  image_url?: {
+    url: string;
+  };
+  video_url?: {
+    url: string;
+  };
+}
+
 export interface RequestMessage {
   role: MessageRole;
-  content: string;
+  content: string | MultimodalContent[] | any;
 }
 
 export interface LLMConfig {
@@ -33,9 +46,11 @@ export interface ChatOptions {
   config: LLMConfig;
 
   onUpdate?: (message: string, chunk: string) => void;
-  onFinish: (message: string) => void;
+  onFinish: (message: string | any) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
+  onRefreshVideo?: any,
+  session?: any
 }
 
 export interface LLMUsage {
@@ -59,6 +74,8 @@ export abstract class LLMApi {
   abstract chat(options: ChatOptions): Promise<void>;
   abstract usage(): Promise<LLMUsage>;
   abstract models(): Promise<LLMModel[]>;
+
+  video?: any;
 }
 
 type ProviderName = "openai" | "azure" | "claude" | "palm";
@@ -88,6 +105,15 @@ export class ClientApi {
   constructor(provider: ModelProvider = ModelProvider.GPT) {
     if (provider === ModelProvider.GeminiPro) {
       this.llm = new GeminiProApi();
+      return;
+    }
+    if (provider === ModelProvider.Video) {
+      this.llm = new VideoApi();
+      return;
+    }
+
+    if (provider === ModelProvider.Excel) {
+      this.llm = new ExcelApi();
       return;
     }
     this.llm = new ChatGPTApi();
@@ -141,13 +167,17 @@ export class ClientApi {
 
 export function getHeaders() {
   const accessStore = useAccessStore.getState();
+  console.log('accessStore', accessStore);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-requested-with": "XMLHttpRequest",
-    "Accept": "application/json",
+    Accept: "application/json",
   };
+  if (accessStore.accessCode) {
+    headers['xxx-token'] = accessStore.accessCode;
+  }
   const modelConfig = useChatStore.getState().currentSession().mask.modelConfig;
-  const isGoogle = modelConfig.model === "gemini-pro";
+  const isGoogle = modelConfig.model.startsWith("gemini");
   const isAzure = accessStore.provider === ServiceProvider.Azure;
   const authHeader = isAzure ? "api-key" : "Authorization";
   const apiKey = isGoogle
@@ -155,20 +185,23 @@ export function getHeaders() {
     : isAzure
     ? accessStore.azureApiKey
     : accessStore.openaiApiKey;
-
+  const clientConfig = getClientConfig();
   const makeBearer = (s: string) => `${isAzure ? "" : "Bearer "}${s.trim()}`;
   const validString = (x: string) => x && x.length > 0;
 
-  // use user's api key first
-  if (validString(apiKey)) {
-    headers[authHeader] = makeBearer(apiKey);
-  } else if (
-    accessStore.enabledAccessControl() &&
-    validString(accessStore.accessCode)
-  ) {
-    headers[authHeader] = makeBearer(
-      ACCESS_CODE_PREFIX + accessStore.accessCode,
-    );
+  // when using google api in app, not set auth header
+  if (!(isGoogle && clientConfig?.isApp)) {
+    // use user's api key first
+    if (validString(apiKey)) {
+      headers[authHeader] = makeBearer(apiKey);
+    } else if (
+      accessStore.enabledAccessControl() &&
+      validString(accessStore.accessCode)
+    ) {
+      headers[authHeader] = makeBearer(
+        ACCESS_CODE_PREFIX + accessStore.accessCode,
+      );
+    }
   }
 
   return headers;
