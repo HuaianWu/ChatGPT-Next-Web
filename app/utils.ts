@@ -304,6 +304,47 @@ export function getMessageVideos(message: RequestMessage): string[] {
   return urls;
 }
 
+export function extractFileNameFromExcelUrl(url: string) {
+  function getLastChineseIndex(str: string) {
+    for (let i = str.length - 1; i >= 0; i--) {
+      const charCode = str.charCodeAt(i);
+      if (charCode >= 0x4e00 && charCode <= 0x9fff) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function processString(input: string) {
+    // 去除文件拓展名
+    const fileNameWithoutExtension = input.replace(/\.\w+$/i, '');
+    // 检查剩余字符串中是否存在中文字符
+    const hasChinese = /[\u4e00-\u9fa5]/.test(fileNameWithoutExtension);
+
+    if (!hasChinese) {
+      // 若无中文，直接返回去除拓展名后的结果
+      return fileNameWithoutExtension;
+    } else {
+      // 若有中文，截取从字符串开头到最后一个中文字符为止的子串
+      const lastChineseCharIndex = getLastChineseIndex(fileNameWithoutExtension);
+
+      return fileNameWithoutExtension.slice(0, lastChineseCharIndex + 1);
+    }
+  }
+
+  // 使用URLSearchParams或new URL()构造函数（现代浏览器支持更好）来解析URL
+  const urlObj = new URL(url);
+
+  // 获取URL的pathname部分，即除域名、查询参数和片段标识符之外的部分
+  const pathName = urlObj.pathname;
+
+  // 文件名位于pathname的最后一部分，通过split()方法分割路径，取最后一项
+  const fileName = pathName.split('/').pop();
+
+  // 返回提取出的文件名
+  return processString(decodeURIComponent(fileName as any));
+}
+
 export function getMessageIsExcel(message: RequestMessage): boolean {
   function isExcelUrl(url: any) {
     const extensionRegex = /\.([a-zA-Z0-9]+)(?:[\?#]|$)/i;
