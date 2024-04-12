@@ -554,15 +554,23 @@ export function ChatActions(props: {
 
       <ChatAction
         onClick={() => {
-          if (messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming) {
-            showToast('请等待视频生成后再进行切换');
-            return
+          if (
+            messages[messages.length - 1] &&
+            messages[messages.length - 1].model == "video" &&
+            messages[messages.length - 1].streaming
+          ) {
+            showToast("请等待视频生成后再进行切换");
+            return;
           }
-          if (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming) {
-            showToast('请等待文件生成后再进行切换');
-            return
+          if (
+            messages[messages.length - 1] &&
+            messages[messages.length - 1].model == "发电计划" &&
+            messages[messages.length - 1].streaming
+          ) {
+            showToast("请等待生成后再进行切换");
+            return;
           }
-          setShowModelSelector(true)
+          setShowModelSelector(true);
         }}
         text={currentModel}
         icon={<RobotIcon />}
@@ -795,7 +803,10 @@ function _Chat() {
       const stopTiming = Date.now() - REQUEST_TIMEOUT_MS;
       session.messages.forEach((m) => {
         // check if should stop all stale messages
-        if ((m.isError || new Date(m.date).getTime() < stopTiming) && m.model != 'video') {
+        if (
+          (m.isError || new Date(m.date).getTime() < stopTiming) &&
+          m.model != "video"
+        ) {
           if (m.streaming) {
             m.streaming = false;
           }
@@ -817,7 +828,7 @@ function _Chat() {
       // auto sync mask config from global config
       if (session.mask.syncGlobalConfig) {
         console.log("[Mask] syncing from global, name = ", session.mask.name);
-        session.mask.modelConfig = {...config.modelConfig};
+        session.mask.modelConfig = { ...config.modelConfig };
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1239,7 +1250,8 @@ function _Chat() {
           const showActions =
             i > 0 &&
             !(message.preview || message.content.length === 0) &&
-            !isContext && message.content[0]?.type != 'video_url';
+            !isContext &&
+            message.content[0]?.type != "video_url";
           const showTyping = message.preview || message.streaming;
 
           const shouldShowClearContextDivider = i === clearContextIndex - 1;
@@ -1350,28 +1362,45 @@ function _Chat() {
                     )}
                   </div>
                   {showTyping && (
-                      <div className={styles["chat-message-status"]}>
-                        {messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
-                      </div>
+                    <div className={styles["chat-message-status"]}>
+                      {messages[messages.length - 1] &&
+                      ["video", "发电计划"].includes(
+                        messages[messages.length - 1].model as any,
+                      ) &&
+                      messages[messages.length - 1].streaming
+                        ? "正在生成…"
+                        : Locale.Chat.Typing}
+                    </div>
                   )}
-                  <div onClick={() => {
-                    console.log('message', message);
-                    let downloadDom = document.createElement('a')
-                    downloadDom.href = message.content;
-                    // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
-                    document.body.appendChild(downloadDom)
-                    downloadDom.click()
-                    document.body.removeChild(downloadDom)
-                  }} className={styles["chat-message-item"]}>
+                  <div className={styles["chat-message-item"]}>
                     {getMessageVideos(message).length == 1 ? (
-                        <video
-                            controls
-                            className={styles["chat-message-item-video"]}
-                            src={getMessageVideos(message)[0]}></video>
-                    ) : (getMessageIsExcel(message) ? (<div className={styles["download-excel"]}>
-                      <ExcelIcon className={styles["download-icon"]}></ExcelIcon>
-                      <div className={styles["download-btn"]}>{extractFileNameFromExcelUrl(message.content)}</div>
-                    </div>) : (<Markdown
+                      <video
+                        controls
+                        className={styles["chat-message-item-video"]}
+                        src={getMessageVideos(message)[0]}
+                      ></video>
+                    ) : getMessageIsExcel(message) ? (
+                      <div
+                        onClick={() => {
+                          console.log("message", message);
+                          let downloadDom = document.createElement("a");
+                          downloadDom.href = message.content;
+                          // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
+                          document.body.appendChild(downloadDom);
+                          downloadDom.click();
+                          document.body.removeChild(downloadDom);
+                        }}
+                        className={styles["download-excel"]}
+                      >
+                        <ExcelIcon
+                          className={styles["download-icon"]}
+                        ></ExcelIcon>
+                        <div className={styles["download-btn"]}>
+                          {extractFileNameFromExcelUrl(message.content)}
+                        </div>
+                      </div>
+                    ) : (
+                      <Markdown
                         content={getMessageTextContent(message)}
                         loading={
                           (message.preview || message.streaming) &&
@@ -1386,8 +1415,8 @@ function _Chat() {
                         fontSize={fontSize}
                         parentRef={scrollRef}
                         defaultShow={i >= messages.length - 6}
-                    />))
-                    }
+                      />
+                    )}
 
                     {getMessageImages(message).length == 1 && (
                       <img
@@ -1466,21 +1495,37 @@ function _Chat() {
           htmlFor="chat-input"
         >
           <textarea
-              id="chat-input"
-              ref={inputRef}
-              className={styles["chat-input"]}
-              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming ? '请求成功！请等待文件生成' : Locale.Chat.Input(submitKey))}
-              onInput={(e) => onInput(e.currentTarget.value)}
-              value={userInput}
-              onKeyDown={onInputKeyDown}
-              onFocus={scrollToBottom}
-              onClick={scrollToBottom}
-              rows={inputRows}
-              autoFocus={autoFocus}
-              disabled={messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
-              style={{
-                fontSize: config.fontSize,
-              }}
+            id="chat-input"
+            ref={inputRef}
+            className={styles["chat-input"]}
+            placeholder={
+              messages[messages.length - 1] &&
+              messages[messages.length - 1].model == "video" &&
+              messages[messages.length - 1].streaming
+                ? "请求成功！请等待视频生成"
+                : messages[messages.length - 1] &&
+                  messages[messages.length - 1].model == "发电计划" &&
+                  messages[messages.length - 1].streaming
+                ? "请求成功！请等待~"
+                : Locale.Chat.Input(submitKey)
+            }
+            onInput={(e) => onInput(e.currentTarget.value)}
+            value={userInput}
+            onKeyDown={onInputKeyDown}
+            onFocus={scrollToBottom}
+            onClick={scrollToBottom}
+            rows={inputRows}
+            autoFocus={autoFocus}
+            disabled={
+              messages[messages.length - 1] &&
+              ["video", "发电计划"].includes(
+                messages[messages.length - 1].model as any,
+              ) &&
+              messages[messages.length - 1].streaming
+            }
+            style={{
+              fontSize: config.fontSize,
+            }}
           />
           {attachImages.length != 0 && (
             <div className={styles["attach-images"]}>
@@ -1506,12 +1551,18 @@ function _Chat() {
             </div>
           )}
           <IconButton
-              icon={<SendWhiteIcon />}
-              text={Locale.Chat.Send}
-              className={styles["chat-input-send"]}
-              type="primary"
-              disabled={messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
-              onClick={() => doSubmit(userInput)}
+            icon={<SendWhiteIcon />}
+            text={Locale.Chat.Send}
+            className={styles["chat-input-send"]}
+            type="primary"
+            disabled={
+              messages[messages.length - 1] &&
+              ["video", "发电计划"].includes(
+                messages[messages.length - 1].model as any,
+              ) &&
+              messages[messages.length - 1].streaming
+            }
+            onClick={() => doSubmit(userInput)}
           />
         </label>
       </div>

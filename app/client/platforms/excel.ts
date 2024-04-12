@@ -9,7 +9,7 @@ import {
   REQUEST_TIMEOUT_MS,
   ServiceProvider,
 } from "@/app/constant";
-import {useAccessStore, useAppConfig, useChatStore} from "@/app/store";
+import { useAccessStore, useAppConfig, useChatStore } from "@/app/store";
 
 import {
   ChatOptions,
@@ -24,9 +24,9 @@ import {
   EventStreamContentType,
   fetchEventSource,
 } from "@fortaine/fetch-event-source";
-import {prettyObject} from "@/app/utils/format";
-import {getClientConfig} from "@/app/config/client";
-import {makeAzurePath} from "@/app/azure";
+import { prettyObject } from "@/app/utils/format";
+import { getClientConfig } from "@/app/config/client";
+import { makeAzurePath } from "@/app/azure";
 import {
   getMessageTextContent,
   getMessageImages,
@@ -34,9 +34,7 @@ import {
 } from "@/app/utils";
 import de from "../../locales/de";
 
-import {
-  showToast,
-} from "./../../components/ui-lib";
+import { showToast } from "./../../components/ui-lib";
 
 export interface OpenAIListModelResponse {
   object: string;
@@ -57,7 +55,7 @@ export class ExcelApi implements LLMApi {
 
     if (isAzure && !accessStore.isValidAzure()) {
       throw Error(
-          "incomplete azure config, please check it in your settings page",
+        "incomplete azure config, please check it in your settings page",
       );
     }
 
@@ -91,7 +89,6 @@ export class ExcelApi implements LLMApi {
   }
 
   async video(options: ChatOptions) {
-
     let loopTimeOutId: any = null;
 
     /**
@@ -99,45 +96,46 @@ export class ExcelApi implements LLMApi {
      */
     const loopGetVideo = async (videoId: any) => {
       try {
-        const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
-          method: "GET",
-          headers: {
-            ...getHeaders(),
-          },
-        });
-        const resJson = (await res.json()) as any;
-        if (resJson.status == 'success') {
-          const extraInfo = [{
-            type: "video_url",
-            video_url: {
-              url: resJson.video_url,
+        const res = await fetch(
+          this.path(`${VideoPath.VideoPath}/${videoId}`),
+          {
+            method: "GET",
+            headers: {
+              ...getHeaders(),
             },
-          }];
+          },
+        );
+        const resJson = (await res.json()) as any;
+        if (resJson.status == "success") {
+          const extraInfo = [
+            {
+              type: "video_url",
+              video_url: {
+                url: resJson.video_url,
+              },
+            },
+          ];
           clearTimeout(loopTimeOutId);
-          options.onRefreshVideo('');
+          options.onRefreshVideo("");
           options.onFinish(extraInfo);
-
         } else {
           loopTimeOutId = setTimeout(() => {
             loopGetVideo(videoId);
-          }, 10000)
+          }, 10000);
         }
-
       } catch (e) {
-        console.log(e)
+        console.log(e);
       }
-    }
-
+    };
 
     if (options.session.videoId) {
-      showToast('请等待视频生成');
+      showToast("请等待视频生成");
       loopGetVideo(options.session.videoId);
     } else {
-      showToast('请求失败');
-      options.onFinish('');
+      showToast("请求失败");
+      options.onFinish("");
       // options.onFinish(resJson?.message || '请求失败，请稍后重试');
     }
-
   }
 
   async chat(options: ChatOptions) {
@@ -185,46 +183,48 @@ export class ExcelApi implements LLMApi {
 
       // make a fetch request
       const requestTimeoutId = setTimeout(
-          () => controller.abort(),
-          REQUEST_TIMEOUT_MS,
+        () => controller.abort(),
+        REQUEST_TIMEOUT_MS,
       );
 
       let loopTimeOutId: any = null;
-
 
       /**
        * 循环获取视频
        */
       const loopGetVideo = async (videoId: any) => {
         try {
-          const res = await fetch(this.path(`${VideoPath.VideoPath}/${videoId}`), {
-            method: "GET",
-            headers: {
-              ...getHeaders(),
-            },
-          });
-          const resJson = (await res.json()) as any;
-          if (resJson.status == 'success') {
-            const extraInfo = [{
-              type: "video_url",
-              video_url: {
-                url: resJson.video_url,
+          const res = await fetch(
+            this.path(`${VideoPath.VideoPath}/${videoId}`),
+            {
+              method: "GET",
+              headers: {
+                ...getHeaders(),
               },
-            }];
+            },
+          );
+          const resJson = (await res.json()) as any;
+          if (resJson.status == "success") {
+            const extraInfo = [
+              {
+                type: "video_url",
+                video_url: {
+                  url: resJson.video_url,
+                },
+              },
+            ];
             clearTimeout(loopTimeOutId);
-            options.onRefreshVideo('');
+            options.onRefreshVideo("");
             options.onFinish(extraInfo);
-
           } else {
             loopTimeOutId = setTimeout(() => {
               loopGetVideo(videoId);
-            }, 10000)
+            }, 10000);
           }
-
         } catch (e) {
-          console.log(e)
+          console.log(e);
         }
-      }
+      };
 
       if (shouldStream) {
         let responseText = "";
@@ -268,8 +268,8 @@ export class ExcelApi implements LLMApi {
             clearTimeout(requestTimeoutId);
             const contentType = res.headers.get("content-type");
             console.log(
-                "[OpenAI] request response content type: ",
-                contentType,
+              "[OpenAI] request response content type: ",
+              contentType,
             );
 
             if (contentType?.startsWith("text/plain")) {
@@ -278,19 +278,18 @@ export class ExcelApi implements LLMApi {
             }
 
             if (
-                !res.ok ||
-                !res.headers
-                    .get("content-type")
-                    ?.startsWith(EventStreamContentType) ||
-                res.status !== 200
+              !res.ok ||
+              !res.headers
+                .get("content-type")
+                ?.startsWith(EventStreamContentType) ||
+              res.status !== 200
             ) {
               const responseTexts = [responseText];
               let extraInfo = await res.clone().text();
               try {
                 const resJson = await res.clone().json();
                 extraInfo = prettyObject(resJson);
-              } catch {
-              }
+              } catch {}
 
               if (res.status === 401) {
                 responseTexts.push(Locale.Error.Unauthorized);
@@ -341,15 +340,15 @@ export class ExcelApi implements LLMApi {
 
         const resJson = await res.json();
 
-        if (resJson.status == 'success' && resJson.url) {
-          showToast('请求成功！请等待文件生成');
+        if (resJson.status == "success" && resJson.data) {
+          showToast("请求成功！请等待~");
           // setTimeout(() => {
-          options.onFinish(resJson.url);
+          options.onFinish(resJson.data);
           // }, 15000)
         } else {
-          showToast(resJson?.message || '请求失败，请稍后重试');
+          showToast(resJson?.message || "请求失败，请稍后重试");
           // options.onFinish('');
-          options.onFinish(resJson?.message || '请求失败，请稍后重试');
+          options.onFinish(resJson?.message || "请求失败，请稍后重试");
         }
       }
     } catch (e) {
@@ -360,10 +359,10 @@ export class ExcelApi implements LLMApi {
 
   async usage() {
     const formatDate = (d: Date) =>
-        `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-            .getDate()
-            .toString()
-            .padStart(2, "0")}`;
+      `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+        .getDate()
+        .toString()
+        .padStart(2, "0")}`;
     const ONE_DAY = 1 * 24 * 60 * 60 * 1000;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -372,13 +371,13 @@ export class ExcelApi implements LLMApi {
 
     const [used, subs] = await Promise.all([
       fetch(
-          this.path(
-              `${OpenaiPath.UsagePath}?start_date=${startDate}&end_date=${endDate}`,
-          ),
-          {
-            method: "GET",
-            headers: getHeaders(),
-          },
+        this.path(
+          `${OpenaiPath.UsagePath}?start_date=${startDate}&end_date=${endDate}`,
+        ),
+        {
+          method: "GET",
+          headers: getHeaders(),
+        },
       ),
       fetch(this.path(OpenaiPath.SubsPath), {
         method: "GET",
@@ -456,4 +455,4 @@ export class ExcelApi implements LLMApi {
   }
 }
 
-export {ExcelPath};
+export { ExcelPath };
