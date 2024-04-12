@@ -559,7 +559,7 @@ export function ChatActions(props: {
             return
           }
           if (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming) {
-            showToast('请等待文件生成后再进行切换');
+            showToast('请等待生成后再进行切换');
             return
           }
           setShowModelSelector(true)
@@ -1354,21 +1354,21 @@ function _Chat() {
                         {messages[messages.length - 1] && ['video', '发电计划'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
                       </div>
                   )}
-                  <div onClick={() => {
-                    console.log('message', message);
-                    let downloadDom = document.createElement('a')
-                    downloadDom.href = message.content;
-                    // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
-                    document.body.appendChild(downloadDom)
-                    downloadDom.click()
-                    document.body.removeChild(downloadDom)
-                  }} className={styles["chat-message-item"]}>
+                  <div className={styles["chat-message-item"]}>
                     {getMessageVideos(message).length == 1 ? (
                         <video
                             controls
                             className={styles["chat-message-item-video"]}
                             src={getMessageVideos(message)[0]}></video>
-                    ) : (getMessageIsExcel(message) ? (<div className={styles["download-excel"]}>
+                    ) : (getMessageIsExcel(message) ? (<div onClick={() => {
+                      console.log('message', message);
+                      let downloadDom = document.createElement('a')
+                      downloadDom.href = message.content;
+                      // downloadDom.download=fileName //--不是必须 若需要【前端重命名文件夹】的话这句代码就需要
+                      document.body.appendChild(downloadDom)
+                      downloadDom.click()
+                      document.body.removeChild(downloadDom)
+                    }} className={styles["download-excel"]}>
                       <ExcelIcon className={styles["download-icon"]}></ExcelIcon>
                       <div className={styles["download-btn"]}>{extractFileNameFromExcelUrl(message.content)}</div>
                     </div>) : (<Markdown
@@ -1469,7 +1469,7 @@ function _Chat() {
               id="chat-input"
               ref={inputRef}
               className={styles["chat-input"]}
-              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming ? '请求成功！请等待文件生成' : Locale.Chat.Input(submitKey))}
+              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : (messages[messages.length - 1] && messages[messages.length - 1].model == '发电计划' && messages[messages.length - 1].streaming ? '请求成功！请等待~' : Locale.Chat.Input(submitKey))}
               onInput={(e) => onInput(e.currentTarget.value)}
               value={userInput}
               onKeyDown={onInputKeyDown}

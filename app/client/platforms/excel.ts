@@ -341,10 +341,10 @@ export class ExcelApi implements LLMApi {
 
         const resJson = await res.json();
 
-        if (resJson.status == 'success' && resJson.url) {
-          showToast('请求成功！请等待文件生成');
+        if (resJson.status == 'success' && resJson.data) {
+          showToast('请求成功！请等待~');
           // setTimeout(() => {
-          options.onFinish(resJson.url);
+          options.onFinish(resJson.data);
           // }, 15000)
         } else {
           showToast(resJson?.message || '请求失败，请稍后重试');
