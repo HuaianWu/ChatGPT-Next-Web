@@ -97,6 +97,10 @@ if (mode !== "export") {
         source: "/api/getpowerplan",
         destination: "http://openai.jzxhnh.com/api/getpowerplan",
       },
+      {
+        source: "/api/getpic",
+        destination: "http://openai.jzxhnh.com/api/getpic",
+      },
     ];
 
     return {

@@ -74,6 +74,7 @@ export enum ModelProvider {
   GeminiPro = "GeminiPro",
   Video = "Video",
   Excel = "Excel",
+  Image = "Image"
 }
 
 export const VideoPath = {
@@ -83,6 +84,10 @@ export const VideoPath = {
 
 export const ExcelPath = {
   ChatPath: "api/getpowerplan",
+};
+
+export const ImagePath = {
+  ChatPath: "api/getpic",
 };
 
 export const OpenaiPath = {
@@ -316,6 +321,15 @@ export const DEFAULT_MODELS = [
       id: "excel",
       providerName: "Excel",
       providerType: "excel",
+    },
+  },
+  {
+    name: "生成图片",
+    available: true,
+    provider: {
+      id: "createImage",
+      providerName: "CreateImage",
+      providerType: "createImage",
     },
   },
 ] as const;
