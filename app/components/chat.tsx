@@ -570,7 +570,11 @@ export function ChatActions(props: {
             showToast("请等待生成后再进行切换");
             return;
           }
-          setShowModelSelector(true);
+          if (messages[messages.length - 1] && messages[messages.length - 1].model == '生成图片' && messages[messages.length - 1].streaming) {
+            showToast('请等待生成后再进行切换');
+            return
+          }
+          setShowModelSelector(true)
         }}
         text={currentModel}
         icon={<RobotIcon />}
@@ -1362,15 +1366,9 @@ function _Chat() {
                     )}
                   </div>
                   {showTyping && (
-                    <div className={styles["chat-message-status"]}>
-                      {messages[messages.length - 1] &&
-                      ["video", "发电计划"].includes(
-                        messages[messages.length - 1].model as any,
-                      ) &&
-                      messages[messages.length - 1].streaming
-                        ? "正在生成…"
-                        : Locale.Chat.Typing}
-                    </div>
+                      <div className={styles["chat-message-status"]}>
+                        {messages[messages.length - 1] && ['video', '发电计划', '生成图片'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '正在生成…' : Locale.Chat.Typing}
+                      </div>
                   )}
                   <div className={styles["chat-message-item"]}>
                     {getMessageVideos(message).length == 1 ? (
@@ -1495,37 +1493,21 @@ function _Chat() {
           htmlFor="chat-input"
         >
           <textarea
-            id="chat-input"
-            ref={inputRef}
-            className={styles["chat-input"]}
-            placeholder={
-              messages[messages.length - 1] &&
-              messages[messages.length - 1].model == "video" &&
-              messages[messages.length - 1].streaming
-                ? "请求成功！请等待视频生成"
-                : messages[messages.length - 1] &&
-                  messages[messages.length - 1].model == "发电计划" &&
-                  messages[messages.length - 1].streaming
-                ? "请求成功！请等待~"
-                : Locale.Chat.Input(submitKey)
-            }
-            onInput={(e) => onInput(e.currentTarget.value)}
-            value={userInput}
-            onKeyDown={onInputKeyDown}
-            onFocus={scrollToBottom}
-            onClick={scrollToBottom}
-            rows={inputRows}
-            autoFocus={autoFocus}
-            disabled={
-              messages[messages.length - 1] &&
-              ["video", "发电计划"].includes(
-                messages[messages.length - 1].model as any,
-              ) &&
-              messages[messages.length - 1].streaming
-            }
-            style={{
-              fontSize: config.fontSize,
-            }}
+              id="chat-input"
+              ref={inputRef}
+              className={styles["chat-input"]}
+              placeholder={messages[messages.length - 1] && messages[messages.length - 1].model == 'video' && messages[messages.length - 1].streaming ? '请求成功！请等待视频生成' : (messages[messages.length - 1] && ['发电计划', '生成图片'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming ? '请求成功！请等待~' : Locale.Chat.Input(submitKey))}
+              onInput={(e) => onInput(e.currentTarget.value)}
+              value={userInput}
+              onKeyDown={onInputKeyDown}
+              onFocus={scrollToBottom}
+              onClick={scrollToBottom}
+              rows={inputRows}
+              autoFocus={autoFocus}
+              disabled={messages[messages.length - 1] && ['video', '发电计划', '生成图片'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
+              style={{
+                fontSize: config.fontSize,
+              }}
           />
           {attachImages.length != 0 && (
             <div className={styles["attach-images"]}>
@@ -1551,18 +1533,12 @@ function _Chat() {
             </div>
           )}
           <IconButton
-            icon={<SendWhiteIcon />}
-            text={Locale.Chat.Send}
-            className={styles["chat-input-send"]}
-            type="primary"
-            disabled={
-              messages[messages.length - 1] &&
-              ["video", "发电计划"].includes(
-                messages[messages.length - 1].model as any,
-              ) &&
-              messages[messages.length - 1].streaming
-            }
-            onClick={() => doSubmit(userInput)}
+              icon={<SendWhiteIcon />}
+              text={Locale.Chat.Send}
+              className={styles["chat-input-send"]}
+              type="primary"
+              disabled={messages[messages.length - 1] && ['video', '发电计划', '生成图片'].includes(messages[messages.length - 1].model as any) && messages[messages.length - 1].streaming}
+              onClick={() => doSubmit(userInput)}
           />
         </label>
       </div>

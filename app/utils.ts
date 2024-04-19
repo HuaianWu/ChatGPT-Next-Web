@@ -346,6 +346,7 @@ export function extractFileNameFromExcelUrl(url: string) {
 }
 
 export function getMessageIsExcel(message: RequestMessage): boolean {
+  if (typeof message.content !== "string") return false;
   function isExcelUrl(url: any) {
     const extensionRegex = /\.([a-zA-Z0-9]+)(?:[\?#]|$)/i;
     const match = url.match(extensionRegex);

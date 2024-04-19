@@ -10,6 +10,7 @@ import { ChatGPTApi } from "./platforms/openai";
 import { GeminiProApi } from "./platforms/google";
 import {VideoApi} from "./platforms/video";
 import {ExcelApi} from "./platforms/excel";
+import {ImageApi} from "./platforms/image";
 export const ROLES = ["system", "user", "assistant"] as const;
 export type MessageRole = (typeof ROLES)[number];
 
@@ -114,6 +115,11 @@ export class ClientApi {
 
     if (provider === ModelProvider.Excel) {
       this.llm = new ExcelApi();
+      return;
+    }
+
+    if (provider === ModelProvider.Image) {
+      this.llm = new ImageApi();
       return;
     }
     this.llm = new ChatGPTApi();
