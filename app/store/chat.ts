@@ -392,6 +392,8 @@ export const useChatStore = createPersistStore(
           api = new ClientApi(ModelProvider.Video);
         } else if (modelConfig.model.startsWith("发电计划")) {
           api = new ClientApi(ModelProvider.Excel);
+        } else if (modelConfig.model.startsWith("生成图片")) {
+          api = new ClientApi(ModelProvider.Image);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -401,7 +403,7 @@ export const useChatStore = createPersistStore(
           messages: sendMessages,
           config: {
             ...modelConfig,
-            stream: !(modelConfig.model.startsWith("video") || modelConfig.model.startsWith("发电计划"))
+            stream: !(modelConfig.model.startsWith("video") || modelConfig.model.startsWith("发电计划") || modelConfig.model.startsWith("生成图片"))
           },
           onUpdate(message) {
             botMessage.streaming = true;
@@ -582,7 +584,7 @@ export const useChatStore = createPersistStore(
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
-        if (['video', '发电计划'].includes(modelConfig.model)) return;
+        if (['video', '发电计划', '生成图片'].includes(modelConfig.model)) return;
 
         var api: ClientApi;
         if (modelConfig.model.startsWith("gemini")) {
@@ -591,6 +593,8 @@ export const useChatStore = createPersistStore(
           api = new ClientApi(ModelProvider.Video);
         } else if (modelConfig.model.startsWith("发电计划")) {
           api = new ClientApi(ModelProvider.Excel);
+        } else if (modelConfig.model.startsWith("生成图片")) {
+          api = new ClientApi(ModelProvider.Image);
         } else {
           api = new ClientApi(ModelProvider.GPT);
         }
@@ -603,6 +607,7 @@ export const useChatStore = createPersistStore(
         if (
             config.enableAutoGenerateTitle &&
             session.topic === DEFAULT_TOPIC &&
+            !session.hasOwnProperty('videoId') &&
             countMessages(messages) >= SUMMARIZE_MIN_LEN
         ) {
           const topicMessages = messages.concat(

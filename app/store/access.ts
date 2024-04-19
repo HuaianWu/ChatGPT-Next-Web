@@ -28,23 +28,24 @@ const DEFAULT_ACCESS_STATE = {
 
   // azure
     azureUrl: "",
-    azureApiKey: "",
-    azureApiVersion: "2023-08-01-preview",
+  azureApiKey: "",
+  azureApiVersion: "2023-08-01-preview",
 
-    // google ai studio
-    googleUrl: "",
-    googleApiKey: "",
-    googleApiVersion: "v1",
+  // google ai studio
+  googleUrl: "",
+  googleApiKey: "",
+  googleApiVersion: "v1",
 
-    videoUrl: "",
-    excelUrl: "",
-    // server config
-    needCode: true,
-    hideUserApiKey: false,
-    hideBalanceQuery: false,
-    disableGPT4: false,
-    disableFastLink: false,
-    customModels: "",
+  videoUrl: "",
+  excelUrl: "",
+  imageUrl: '',
+  // server config
+  needCode: true,
+  hideUserApiKey: false,
+  hideBalanceQuery: false,
+  disableGPT4: false,
+  disableFastLink: false,
+  customModels: "",
 };
 
 export const useAccessStore = createPersistStore(
